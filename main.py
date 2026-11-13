@@ -1,8 +1,10 @@
-# Phoenix Rising — make.fun coolest-art-01 entry v2 (Python 3.13, stdlib only).
-# The artwork is art.png beside this file (a phoenix with spread wings
-# rising from flames under a night moon, designed as an editable draw.io
-# diagram in artwork.drawio and rendered by render.py); the program copies
-# it to /output/entry.png. Deterministic: the same bytes every run, no network.
+# Fly Me to the Moon — make.fun coolest-art-01 entry v2 (Python 3.13, stdlib only).
+# The artwork is art.png beside this file (a retro 1950s-60s atomic-age
+# poster: ringed Saturn, a red vintage car flying through space, big bold
+# "FLY ME TO THE MOON" typography, a couple on a tiled plaza, vintage cars
+# — designed as an editable draw.io diagram in artwork.drawio and rendered
+# by render.py); the program copies it to /output/entry.png. Deterministic:
+# the same bytes every run, no network.
 #
 # Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 #   mkdir -p out && MAKEFUN_OUTPUT_DIR=out python3 main.py

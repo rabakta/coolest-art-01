@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Eclipse over the Sea - make.fun 'coolest art' bounty entry artwork.
+"""Phoenix Rising - make.fun 'coolest art' bounty entry artwork v2.
 
 Single design spec (seed 42, deterministic, no network) shared by:
   - render.py  -> art.png  (PIL render, this file)
   - build_drawio.py -> artwork.drawio (same spec, draw.io XML)
 
 Canvas: 1024x1024. Output: art.png (PNG, <=1 MiB).
+A phoenix with spread wings rising from flames: gold/orange/red fire
+against a deep indigo-crimson night sky, pale moon, rising embers.
 """
 import hashlib
 import math
@@ -19,20 +21,22 @@ SEED = 42
 
 # --- palette ---
 INDIGO = (0x0B, 0x10, 0x35)
-VIOLET = (0x3B, 0x1F, 0x5E)
-MAGENTA = (0xC6, 0x2B, 0x6B)
-DARK_DISK = (0x0A, 0x0A, 0x18)
-ORANGE = (0xFF, 0x9A, 0x3D)
-GOLD = (0xFF, 0xD2, 0x3D)
-BACK_MTN = (0x2A, 0x1B, 0x4E)
-FRONT_MTN = (0x14, 0x10, 0x33)
-TEAL = (0x0E, 0x4A, 0x5A)
-DEEP_BLUE = (0x0A, 0x1E, 0x3F)
+CRIMSON_DARK = (0x2A, 0x0A, 0x18)
+EMBER_DARK = (0x3A, 0x0E, 0x08)
+DEEP_RED = (0x8B, 0x0E, 0x0E)
+RED = (0xC8, 0x1E, 0x1E)
+ORANGE = (0xFF, 0x6B, 0x1A)
+BRIGHT_ORANGE = (0xFF, 0x9A, 0x3D)
+GOLD = (0xFF, 0xC2, 0x3D)
+PALE_YELLOW = (0xFF, 0xE8, 0x8A)
+MOON = (0xFF, 0xF0, 0xC8)
 WHITE = (255, 255, 255)
+DARK = (0x0A, 0x06, 0x12)
 
-SUN_CX, SUN_CY, SUN_R = 512, 430, 170
-HORIZON_Y = 720
-SEA_TOP, SEA_BOTTOM = 720, 1024
+SHOULDER_L = (462, 500)
+SHOULDER_R = (562, 500)
+MOON_CX, MOON_CY, MOON_R = 800, 165, 58
+RIDGE_Y = 940
 
 OUT = Path(__file__).resolve().parent / "art.png"
 
@@ -45,84 +49,117 @@ def _hex(rgb):
     return "#%02X%02X%02X" % rgb
 
 
+def _feather(base, angle_deg, length, width, color, alpha):
+    """A tapered feather quad from base along angle (deg, PIL coords y down)."""
+    a = math.radians(angle_deg)
+    dx, dy = math.cos(a), math.sin(a)
+    px, py = -dy, dx
+    tip = (base[0] + dx * length, base[1] + dy * length)
+    b1 = (base[0] + px * width / 2, base[1] + py * width / 2)
+    b2 = (base[0] - px * width / 2, base[1] - py * width / 2)
+    t1 = (tip[0] + px * 3, tip[1] + py * 3)
+    t2 = (tip[0] - px * 3, tip[1] - py * 3)
+    return dict(poly=[tip, b1, b2], tip=tip, color=color, alpha=alpha,
+                width=width, angle=angle_deg)
+
+
 def design():
     """Return the full deterministic design spec (seed 42)."""
     rng = random.Random(SEED)
 
-    # --- stars: ~90 diamonds in upper 60% of sky ---
+    # --- stars: ~55 diamonds in upper sky ---
     stars = []
-    for _ in range(90):
+    for _ in range(55):
         x = rng.uniform(8, W - 8)
-        y = rng.uniform(8, 614)
-        s = rng.uniform(2, 6)
-        gold = rng.random() < 0.35
-        alpha = rng.randint(140, 255)
+        y = rng.uniform(8, 560)
+        s = rng.uniform(2, 5.5)
+        gold = rng.random() < 0.4
+        alpha = rng.randint(130, 255)
         stars.append(dict(x=x, y=y, s=s,
                           color=GOLD if gold else WHITE, alpha=alpha))
 
-    # --- corona: 3 concentric rings + 12 rays ---
-    rings = [
-        dict(r=188, color=ORANGE, alpha=220, width=7),
-        dict(r=210, color=GOLD, alpha=150, width=5),
-        dict(r=236, color=ORANGE, alpha=80, width=4),
-    ]
-    rays = []
-    for i in range(12):
-        ang = 2 * math.pi * i / 12 + math.pi / 12  # offset so none is straight up
-        rays.append(dict(angle=ang, r0=248, r1=306,
-                         color=GOLD if i % 2 == 0 else ORANGE,
-                         width=13, alpha=235))
+    # --- embers: ~70 glowing dots rising across the canvas ---
+    embers = []
+    for _ in range(70):
+        embers.append(dict(x=rng.uniform(20, W - 20),
+                           y=rng.uniform(120, 1000),
+                           r=rng.uniform(1.5, 4.5),
+                           color=rng.choice([GOLD, BRIGHT_ORANGE, ORANGE]),
+                           alpha=rng.randint(120, 255)))
 
-    # --- mountains: jagged layers, baseline at horizon ---
+    # --- wings: 3 layers x 7 feathers per side, fanning up-out ---
+    # layer colors: inner deep red -> red -> orange -> gold tips
+    layer_colors = [DEEP_RED, RED, ORANGE, BRIGHT_ORANGE, GOLD]
+    feathers = []
+    for side, shoulder in ((-1, SHOULDER_L), (1, SHOULDER_R)):
+        for layer in range(3):
+            for i in range(9):
+                # fan: left wing 188..260 deg, right wing -80..-8 deg
+                if side < 0:
+                    ang = 188 + i * 9 + layer * 3
+                else:
+                    ang = -80 - i * 9 - layer * 3
+                length = 310 - layer * 55 - abs(i - 4) * 16 + rng.uniform(-8, 8)
+                width = 62 - layer * 10
+                color = layer_colors[min(1 + layer + (1 if i in (0, 8) else 0), 4)]
+                feathers.append(_feather(shoulder, ang, length, width,
+                                         color, 235))
+
+    # --- tail ribbons: 5 wavy flame ribbons flowing down from tail base ---
+    ribbons = []
+    for k in range(5):
+        spread = (k - 2) * 30
+        phase = rng.uniform(0, 6.28)
+        amp = rng.uniform(30, 55)
+        length = rng.uniform(300, 380)
+        color = [RED, ORANGE, BRIGHT_ORANGE, GOLD, ORANGE][k]
+        ribbons.append(dict(x0=512 + spread, y0=600, length=length,
+                            phase=phase, amp=amp, color=color))
+
+    # --- ground flames: ~16 tongues along the bottom ridge ---
+    flames = []
+    for i in range(16):
+        x = 40 + i * 60 + rng.uniform(-14, 14)
+        h = rng.uniform(50, 130)
+        w = rng.uniform(34, 52)
+        color = rng.choice([RED, ORANGE, BRIGHT_ORANGE, GOLD])
+        flames.append(dict(x=x, h=h, w=w, color=color))
+
+    # --- ridge: jagged dark rock silhouette at the bottom ---
     def peaks(n, y_lo, y_hi):
         xs = [0.0]
         for _ in range(n - 1):
             xs.append(xs[-1] + W / n + rng.uniform(-30, 30))
         xs.append(float(W))
-        pts = [(0.0, HORIZON_Y)]
+        pts = [(0.0, float(H))]
         for i, x in enumerate(xs[1:-1], start=1):
             pts.append((x, rng.uniform(y_lo, y_hi)))
-        pts.append((float(W), HORIZON_Y))
+        pts.append((float(W), float(H)))
         return pts
 
-    back_mtn = peaks(8, 560, 640)
-    front_mtn = peaks(9, 620, 685)
+    ridge = peaks(9, 900, 960)
 
-    # --- sea reflection streaks under the sun ---
-    streaks = []
-    for _ in range(14):
-        cx = rng.uniform(380, 640)
-        length = rng.uniform(40, 200)
-        y = rng.uniform(735, 1000)
-        alpha = rng.randint(90, 230)
-        streaks.append(dict(x=cx - length / 2, y=y, length=length,
-                            h=rng.uniform(2.5, 4.5), alpha=alpha))
+    return dict(stars=stars, embers=embers, feathers=feathers,
+                ribbons=ribbons, flames=flames, ridge=ridge)
 
-    # --- birds: 5 chevrons in upper sky ---
-    birds = []
-    for _ in range(5):
-        birds.append(dict(x=rng.uniform(150, 850),
-                          y=rng.uniform(180, 300),
-                          s=rng.uniform(14, 22)))
 
-    return dict(stars=stars, rings=rings, rays=rays,
-                back_mtn=back_mtn, front_mtn=front_mtn,
-                streaks=streaks, birds=birds)
+def _body_poly():
+    """Phoenix body: elegant S-curve teardrop, head at top, tail at bottom."""
+    # body outline (x, y) clockwise from neck
+    return [(512, 330), (536, 360), (548, 420), (545, 490), (530, 560),
+            (512, 610), (494, 560), (479, 490), (476, 420), (488, 360)]
 
 
 def render(spec):
     img = Image.new("RGB", (W, H))
     d = ImageDraw.Draw(img)
 
-    # --- sky: vertical gradient indigo -> violet -> magenta (0..640),
-    #     holding magenta down to the horizon (720) ---
-    for y in range(HORIZON_Y + 1):
-        if y <= 320:
-            c = _lerp(INDIGO, VIOLET, y / 320)
-        elif y <= 640:
-            c = _lerp(VIOLET, MAGENTA, (y - 320) / 320)
+    # --- sky: vertical gradient indigo -> crimson -> ember dark ---
+    for y in range(H):
+        if y <= 380:
+            c = _lerp(INDIGO, CRIMSON_DARK, y / 380)
         else:
-            c = MAGENTA
+            c = _lerp(CRIMSON_DARK, EMBER_DARK, (y - 380) / (H - 380))
         d.line([(0, y), (W, y)], fill=c)
 
     ov = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -134,63 +171,93 @@ def render(spec):
         od.polygon([(x, y - s), (x + s, y), (x, y + s), (x - s, y)],
                    fill=st["color"] + (st["alpha"],))
 
-    # --- corona soft glow (translucent filled discs) ---
-    for r, a in ((262, 14), (232, 26), (204, 48)):
-        od.ellipse([SUN_CX - r, SUN_CY - r, SUN_CX + r, SUN_CY + r],
-                   fill=ORANGE + (a,))
+    # --- moon glow + disc (upper right) ---
+    for r, a in ((110, 12), (84, 22), (66, 40)):
+        od.ellipse([MOON_CX - r, MOON_CY - r, MOON_CX + r, MOON_CY + r],
+                   fill=MOON + (a,))
+    od.ellipse([MOON_CX - MOON_R, MOON_CY - MOON_R,
+                MOON_CX + MOON_R, MOON_CY + MOON_R], fill=MOON + (255,))
+    # moon shadow craters
+    for cx, cy, r in ((776, 148, 10), (822, 182, 13), (790, 190, 7)):
+        od.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(0xE8, 0xD8, 0xB0, 90))
 
-    # --- rays (triangles radiating outward) ---
-    for ray in spec["rays"]:
-        a = ray["angle"]
-        dx, dy = math.cos(a), math.sin(a)
-        px, py = -dy, dx  # perpendicular
-        tip = (SUN_CX + dx * ray["r1"], SUN_CY + dy * ray["r1"])
-        b1 = (SUN_CX + dx * ray["r0"] + px * ray["width"] / 2,
-              SUN_CY + dy * ray["r0"] + py * ray["width"] / 2)
-        b2 = (SUN_CX + dx * ray["r0"] - px * ray["width"] / 2,
-              SUN_CY + dy * ray["r0"] - py * ray["width"] / 2)
-        od.polygon([tip, b1, b2], fill=ray["color"] + (ray["alpha"],))
+    # --- fire glow behind the phoenix ---
+    for r, a in ((330, 14), (280, 24), (225, 40)):
+        od.ellipse([512 - r, 480 - r, 512 + r, 480 + r], fill=ORANGE + (a,))
 
-    # --- corona rings ---
-    for ring in spec["rings"]:
-        r = ring["r"]
-        od.ellipse([SUN_CX - r, SUN_CY - r, SUN_CX + r, SUN_CY + r],
-                   outline=ring["color"] + (ring["alpha"],),
-                   width=ring["width"])
+    # --- wing bases: solid fan silhouettes behind the feathers ---
+    for side, shoulder in ((-1, SHOULDER_L), (1, SHOULDER_R)):
+        tips = []
+        for f in spec["feathers"]:
+            # layer-0 feathers of this side: longest, define the fan edge
+            if f["width"] > 60 and ((side < 0) == (f["angle"] > 90)):
+                tips.append(f["tip"])
+        tips.sort(key=lambda p: math.atan2(p[1] - shoulder[1],
+                                           p[0] - shoulder[0]))
+        if len(tips) >= 3:
+            od.polygon([shoulder] + tips, fill=DEEP_RED + (255,))
 
-    # --- eclipse disk ---
-    od.ellipse([SUN_CX - SUN_R, SUN_CY - SUN_R,
-                SUN_CX + SUN_R, SUN_CY + SUN_R], fill=DARK_DISK + (255,))
+    # --- tail ribbons: wavy bands of overlapping circles ---
+    for rb in spec["ribbons"]:
+        steps = 26
+        for i in range(steps):
+            t = i / (steps - 1)
+            y = rb["y0"] + t * rb["length"]
+            x = rb["x0"] + math.sin(t * 4.2 + rb["phase"]) * rb["amp"] * t
+            r = 12 * (1 - t * 0.6) + 3
+            od.ellipse([x - r, y - r, x + r, y + r],
+                       fill=rb["color"] + (235,))
+
+    # --- wings: feathers back layer first (layer 0 deepest) ---
+    for f in spec["feathers"]:
+        od.polygon(f["poly"], fill=f["color"] + (f["alpha"],))
+        # pale tip dot at feather tip
+        tx, ty = f["tip"]
+        od.ellipse([tx - 4, ty - 4, tx + 4, ty + 4],
+                   fill=PALE_YELLOW + (200,))
+
+    # --- body: gold-orange teardrop with red chest ---
+    body = _body_poly()
+    od.polygon(body, fill=BRIGHT_ORANGE + (255,))
+    # chest highlight
+    od.ellipse([492, 400, 532, 520], fill=GOLD + (255,))
+    # belly shadow
+    od.polygon([(512, 610), (530, 560), (545, 490), (530, 540), (512, 585),
+                (494, 540), (479, 490)], fill=RED + (180,))
+
+    # --- head: crest + beak + eye ---
+    # crest: 3 thin flame feathers sweeping back from the head
+    for dx, ln, col in ((-14, 46, GOLD), (-4, 56, BRIGHT_ORANGE), (8, 44, GOLD)):
+        od.polygon([(512 + dx, 338), (512 + dx - 8, 338 - ln),
+                    (512 + dx + 8, 338 - ln)],
+                   fill=col + (255,))
+    od.ellipse([494, 320, 530, 356], fill=GOLD + (255,))  # head
+    od.polygon([(528, 334), (554, 342), (528, 350)], fill=ORANGE + (255,))  # beak
+    od.ellipse([516, 332, 523, 339], fill=WHITE + (255,))  # eye
+    od.ellipse([518, 334, 521, 337], fill=DARK + (255,))   # pupil
 
     img = Image.alpha_composite(img.convert("RGBA"), ov)
     d = ImageDraw.Draw(img)
 
-    # --- mountains (polygons, baseline at horizon) ---
-    d.polygon(spec["back_mtn"], fill=BACK_MTN + (255,))
-    d.polygon(spec["front_mtn"], fill=FRONT_MTN + (255,))
+    # --- ridge: dark rock silhouette ---
+    d.polygon(spec["ridge"], fill=DARK + (255,))
 
-    # --- sea: vertical gradient teal -> deep blue ---
-    for y in range(SEA_TOP, SEA_BOTTOM):
-        c = _lerp(TEAL, DEEP_BLUE, (y - SEA_TOP) / (SEA_BOTTOM - SEA_TOP))
-        d.line([(0, y), (W, y)], fill=c)
-
-    # --- gold reflection streaks ---
+    # --- ground flames: tongues rising from the ridge ---
     ov2 = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     od2 = ImageDraw.Draw(ov2)
-    for st in spec["streaks"]:
-        od2.rectangle([st["x"], st["y"], st["x"] + st["length"],
-                       st["y"] + st["h"]], fill=GOLD + (st["alpha"],))
+    for fl in spec["flames"]:
+        x, h, w = fl["x"], fl["h"], fl["w"]
+        base_y = 1010
+        od2.polygon([(x - w / 2, base_y), (x, base_y - h),
+                     (x + w / 2, base_y)], fill=fl["color"] + (235,))
+        od2.polygon([(x - w / 4, base_y), (x, base_y - h * 0.62),
+                     (x + w / 4, base_y)], fill=PALE_YELLOW + (220,))
+    # embers rising
+    for em in spec["embers"]:
+        r = em["r"]
+        od2.ellipse([em["x"] - r, em["y"] - r, em["x"] + r, em["y"] + r],
+                    fill=em["color"] + (em["alpha"],))
     img = Image.alpha_composite(img, ov2)
-    d = ImageDraw.Draw(img)
-
-    # --- horizon line, 3px gold ---
-    d.rectangle([0, HORIZON_Y - 1, W, HORIZON_Y + 1], fill=GOLD)
-
-    # --- birds (dark chevrons, two short angled strokes each) ---
-    for b in spec["birds"]:
-        x, y, s = b["x"], b["y"], b["s"]
-        d.line([(x - s, y - s * 0.45), (x, y), (x + s, y - s * 0.45)],
-               fill=(10, 10, 24), width=3)
 
     return img.convert("RGB")
 

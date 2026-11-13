@@ -1,8 +1,8 @@
-# Eclipse over the Sea — make.fun coolest-art-01 entry (Python 3.13, stdlib only).
-# The artwork is art.png beside this file (a geometric solar eclipse over
-# indigo mountains and a teal sea, designed as an editable draw.io diagram
-# in artwork.drawio and rendered by render.py); the program copies it to
-# /output/entry.png. Deterministic: the same bytes every run, no network.
+# Phoenix Rising — make.fun coolest-art-01 entry v2 (Python 3.13, stdlib only).
+# The artwork is art.png beside this file (a phoenix with spread wings
+# rising from flames under a night moon, designed as an editable draw.io
+# diagram in artwork.drawio and rendered by render.py); the program copies
+# it to /output/entry.png. Deterministic: the same bytes every run, no network.
 #
 # Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 #   mkdir -p out && MAKEFUN_OUTPUT_DIR=out python3 main.py
